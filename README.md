@@ -143,6 +143,24 @@ Example:
 Meta + .
 ```
 
+Due to needing `--toggle` you also need to create the app as such.
+
+Location: `~/.local/share/applications/emoji-picker.desktop`
+```
+[Desktop Entry]
+Type=Application
+Name=Emoji Picker
+Exec=emoji-picker --toggle
+Icon=face-smile
+Terminal=false
+Categories=Utility;
+```
+
+After which, update kde app list:
+
+`update-desktop-database ~/.local/share/applications`
+
+
 ---
 
 ## How It Works
