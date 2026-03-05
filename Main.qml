@@ -67,15 +67,77 @@ Window {
 
     function rebuildViewModel() {
         viewModel.clear()
-        var q = search.text.trim().toLowerCase()
 
+        var raw = search.text
+        var q = raw.trim().toLowerCase()
+        if (q.length === 0) {
+            // show everything in original order
+            for (var i = 0; i < allModel.count; i++) {
+                viewModel.append(allModel.get(i))
+            }
+            list.currentIndex = viewModel.count > 0 ? 0 : -1
+            return
+        }
+
+        // Normalize query:
+        // - if user typed ":joy" or ":joy:" treat it as a shortcode query
+        var qIsShort = q.startsWith(":")
+        var qShort = q.replace(/^:+/, "").replace(/:+$/, "") // joy
+
+        // score: lower is better
+        function scoreLine(line) {
+            // line format: "<emoji> :shortcode: token token token"
+            var parts = ("" + line).toLowerCase().split(/\s+/)
+            var sc = parts.length >= 2 ? parts[1] : "" // ":joy:"
+            var scBare = sc.replace(/^:+/, "").replace(/:+$/, "")
+
+            // Exact / prefix / contains on shortcode
+            if (qIsShort) {
+                if (sc === ":" + qShort + ":") return 0
+                if (scBare === qShort) return 1
+                if (scBare.startsWith(qShort)) return 2
+                if (scBare.indexOf(qShort) !== -1) return 3
+            } else {
+                // no colon typed: still prioritize shortcode matches
+                if (scBare === q) return 4
+                if (scBare.startsWith(q)) return 5
+                if (scBare.indexOf(q) !== -1) return 6
+            }
+
+            // Token match (tags/aliases)
+            // Prefer token prefix over substring
+            for (var i = 2; i < parts.length; i++) {
+                if (parts[i] === q) return 10
+            }
+            for (var i = 2; i < parts.length; i++) {
+                if (parts[i].startsWith(q)) return 11
+            }
+            for (var i = 0; i < parts.length; i++) {
+                if (parts[i].indexOf(q) !== -1) return 20
+            }
+
+            return 999
+        }
+
+        // Collect + sort by score, then stable by original index
+        var hits = []
         for (var i = 0; i < allModel.count; i++) {
-            var e = allModel.get(i).emoji
             var line = allModel.get(i).line
-            if (q.length === 0 || ("" + line).toLowerCase().indexOf(q) !== -1) {
-                viewModel.append({ emoji: e, line: line })
+            var s = scoreLine(line)
+            if (s < 999) {
+                hits.push({ idx: i, s: s })
             }
         }
+
+        hits.sort(function(a, b) {
+            if (a.s !== b.s) return a.s - b.s
+            return a.idx - b.idx
+        })
+
+        for (var k = 0; k < hits.length; k++) {
+            viewModel.append(allModel.get(hits[k].idx))
+        }
+
         list.currentIndex = viewModel.count > 0 ? 0 : -1
     }
 
