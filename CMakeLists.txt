@@ -19,3 +19,5 @@ qt_add_executable(emoji-picker
 target_link_libraries(emoji-picker PRIVATE
   Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick
 )
+
+install(TARGETS emoji-picker RUNTIME DESTINATION bin)

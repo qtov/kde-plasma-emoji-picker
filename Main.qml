@@ -33,6 +33,7 @@ Window {
 
     // Queue: emojis appended on Enter, pasted on Esc
     property string queued: ""
+    property bool allowAutoClose: false
 
     ListModel { id: allModel }
     ListModel { id: viewModel }
@@ -40,13 +41,6 @@ Window {
     function shellQuote(s) {
         return "'" + ("" + s).split("'").join("'\\''") + "'"
     }
-
-    function showAndFocus() {
-		root.visible = true
-	    root.raise()
-	    root.requestActivate()
-	    search.forceActiveFocus()
-	}
 
     function loadList() {
         allModel.clear()
@@ -98,8 +92,7 @@ Window {
 
     function popEmoji() {
         if (!queued || queued.length === 0) return
-        // still naive; good enough for now
-        queued = queued.slice(0, queued.length - 1)
+        queued = Sys.popLastGrapheme(queued)
     }
 
     function pasteQueueAndQuit() {
@@ -122,11 +115,44 @@ Window {
         Qt.quit()
     }
 
+    function showAndFocus() {
+        root.visible = true
+        root.raise()
+        root.requestActivate()
+        search.forceActiveFocus()
+        allowAutoClose = true
+    }
+
+    Timer {
+        id: focusLostTimer
+        interval: 80
+        repeat: false
+        onTriggered: {
+            // If we’re visible and nothing inside has focus anymore -> close
+            if (root.visible && allowAutoClose && root.activeFocusItem === null) {
+                Qt.quit()
+            }
+        }
+    }
+
+    onActiveFocusItemChanged: {
+        // When focus changes away, start debounce timer to confirm it’s really lost
+        if (allowAutoClose && root.visible) {
+            focusLostTimer.restart()
+        }
+    }
+
+    onVisibleChanged: {
+        // When hidden, reset. When shown, we'll re-arm after focusing.
+        if (!root.visible) allowAutoClose = false
+    }
+
     Component.onCompleted: {
         if (haveKdotool) {
             prevWinId = Sys.runCapture("kdotool getactivewindow 2>/dev/null || true")
         }
         loadList()
+        allowAutoClose = true
         search.forceActiveFocus()
     }
 
@@ -135,9 +161,27 @@ Window {
         anchors.fill: parent
         focus: true
 
+        onActiveFocusChanged: {
+            if (!activeFocus && allowAutoClose && root.visible) {
+                focusLostTimer.restart()
+            }
+        }
+
         Keys.onPressed: function(ev) {
+            if (ev.key === Qt.Key_Q && (ev.modifiers & Qt.ControlModifier)) {
+                Qt.quit()
+                ev.accepted = true
+                return
+            }
+
             if (ev.key === Qt.Key_Escape) {
-                pasteQueueAndQuit()
+                var modified = (ev.modifiers & (Qt.ControlModifier | Qt.ShiftModifier)) !== 0
+                // var modified = (ev.modifiers & Qt.ShiftModifier) !== 0
+                if (modified) {
+                    Qt.quit()              // close without pasting
+                } else {
+                    pasteQueueAndQuit()    // default: paste & close
+                }
                 ev.accepted = true
                 return
             }
@@ -181,30 +225,49 @@ Window {
                 color: "#1c1c1c"
                 border.color: "#2a2a2a"
 
-		TextField {
-		    id: search
-		    // Layout.fillWidth: true
-		    width: parent.width
-		    Layout.preferredHeight: hField
+                TextField {
+                    id: search
+                    // Layout.fillWidth: true
+                    width: parent.width
+                    Layout.preferredHeight: hField
 
-		    placeholderText: "Search emoji / :shortcode: / tags…"
-		    font.pixelSize: pxMd
-		    color: "white"
+                    placeholderText: "Search emoji / :shortcode: / tags…"
+                    font.pixelSize: pxMd
+                    color: "white"
 
-		    leftPadding: 14
-		    rightPadding: 14
-		    topPadding: 10
-		    bottomPadding: 10
+                    leftPadding: 14
+                    rightPadding: 14
+                    topPadding: 10
+                    bottomPadding: 10
 
-		    background: Rectangle {
-			radius: 12
-			color: "#1c1c1c"
-			border.color: "#2a2a2a"
-		    }
+                    background: Rectangle {
+                        radius: 12
+                        color: "#1c1c1c"
+                        border.color: "#2a2a2a"
+                    }
 
-		    palette.placeholderText: "#777777"
-		    onTextChanged: rebuildViewModel()
-		}
+                    palette.placeholderText: "#777777"
+                    onTextChanged: rebuildViewModel()
+
+                    Keys.onPressed: function(ev) {
+                        var ctrl = (ev.modifiers & Qt.ControlModifier) !== 0
+                        var shift = (ev.modifiers & Qt.ShiftModifier) !== 0
+
+                        if (shift && ev.key === Qt.Key_Backspace ||
+                            ctrl && ev.key === Qt.Key_W
+                        ) {
+                            popEmoji()
+                            ev.accepted = true
+                            return
+                        }
+
+                        if (ctrl && ev.key === Qt.Key_U) {
+                            queued = ""
+                            ev.accepted = true
+                            return
+                        }
+                    }
+                }
             }
 
             Rectangle {
@@ -254,61 +317,81 @@ Window {
                 model: viewModel
                 currentIndex: 0
 
-		delegate: Rectangle {
-		    width: list.width
-		    height: hRow
-		    radius: 8
-		    color: (index === list.currentIndex) ? "#2a2a2a" : "transparent"
+                delegate: Rectangle {
+                    width: list.width
+                    height: hRow
+                    radius: 8
+                    color: (index === list.currentIndex) ? "#2a2a2a" : "transparent"
 
-		    // Build one clean label: ":rofl: lol laughing"
-		    property string label: {
-			var parts = ("" + model.line).split(/\s+/)
-			if (parts.length < 2) return ""
-			var sc = parts[1]              // :rofl:
-			var tags = []
-			// take up to 2 tags after shortcode
-			for (var i = 2; i < parts.length && tags.length < 2; i++) {
-			    tags.push(parts[i])
-			}
-			return tags.length ? (sc + "  " + tags.join(" ")) : sc
-		    }
+                    // Build one clean label: ":rofl: lol laughing"
+                    property string label: {
+                        var parts = ("" + model.line).split(/\s+/)
+                        if (parts.length < 2) return ""
+                        var sc = parts[1]              // :rofl:
+                        var tags = []
+                        // take up to 2 tags after shortcode
+                        for (var i = 2; i < parts.length && tags.length < 2; i++) {
+                            tags.push(parts[i])
+                        }
+                        return tags.length ? (sc + "  " + tags.join(" ")) : sc
+                    }
 
-		    MouseArea {
-			anchors.fill: parent
-			onClicked: list.currentIndex = index
-			onDoubleClicked: queueEmoji(model.emoji)
-		    }
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: list.currentIndex = index
+                        onDoubleClicked: queueEmoji(model.emoji)
+                    }
 
-		    RowLayout {
-			anchors.fill: parent
-			anchors.margins: 10
-			spacing: 10
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        spacing: 10
 
-			Text {
-			    text: model.emoji
-			    font.pixelSize: pxLg
-			    color: "white"
-			    Layout.preferredWidth: Math.round(pxLg * 2.0)
-			    verticalAlignment: Text.AlignVCenter
-			}
+                        Text {
+                            text: model.emoji
+                            font.pixelSize: pxLg
+                            color: "white"
+                            Layout.preferredWidth: Math.round(pxLg * 2.0)
+                            verticalAlignment: Text.AlignVCenter
+                        }
 
-			Text {
-			    text: label
-			    font.pixelSize: pxMd
-			    color: "white"
-			    elide: Text.ElideRight
-			    Layout.fillWidth: true
-			    verticalAlignment: Text.AlignVCenter
-			}
-		    }
-		}
+                        Text {
+                            text: label
+                            font.pixelSize: pxMd
+                            color: "white"
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                    }
+                }
             }
 
-            Text {
+            ColumnLayout {
                 Layout.fillWidth: true
-                text: "Enter = add to queue   Backspace = remove last   Esc = paste & close"
-                color: "#888888"
-                font.pixelSize: pxSm
+                spacing: 2
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "Enter = add to queue   Shift+Backspace | Ctrl+w = remove last emoji"
+                    color: "#888888"
+                    font.pixelSize: pxSm
+                    elide: Text.ElideRight
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: "Ctrl+u = clear emoji queue"
+                    color: "#888888"
+                    font.pixelSize: pxSm
+                    elide: Text.ElideRight
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: "Esc = paste & close   Shift+Esc | Ctrl+q = close"
+                    color: "#888888"
+                    font.pixelSize: pxSm
+                    elide: Text.ElideRight
+                }
             }
         }
     }
