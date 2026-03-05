@@ -6,6 +6,7 @@ The KDE Plasma emoji applet is in "development" for 5 years as of now, and it st
 - press esc (clears text input)
 - press esc again
 - press ctrl+v
+
 Absolutely freakin' bollocks.
 
 Hence... I vibecoded this crap in 3 hours +/- as I have no experience with C++ (except at university 10y ago).
@@ -15,6 +16,7 @@ This slop's workflow is:
 - write emoji
 - press enter to insert
 - press esc to exit + insert
+
 And that's not all, you can press `enter` multiple times to have 🤣🤣🤣, or even COMBINE them in the same prompt, the feat of engineering here, oh my god.
 
 # Emoji Picker (Qt / KDE Wayland)
