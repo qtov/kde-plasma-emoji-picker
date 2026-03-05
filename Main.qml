@@ -1,17 +1,27 @@
-// Main.qml
 import QtQuick
 import QtQuick.Window
 import QtQuick.Controls
+import QtQuick.Layouts
 
 Window {
     id: root
-    width: 560
-    height: 760
+    width: 520
+    height: 640
     visible: true
     title: "Emoji"
     flags: Qt.Tool | Qt.FramelessWindowHint
     color: "#111111"
     opacity: 0.98
+
+    // ---- sizing that respects system scaling ----
+    // Qt.application.font.pixelSize already tracks your system font scaling.
+    readonly property int basePx: Math.max(12, Qt.application.font.pixelSize || 12)
+    readonly property int pxSm: Math.round(basePx * 0.95)
+    readonly property int pxMd: Math.round(basePx * 1.10)
+    readonly property int pxLg: Math.round(basePx * 1.55)
+
+    readonly property int hField: Math.round(basePx * 2.8)
+    readonly property int hRow: Math.round(basePx * 2.6)
 
     property bool haveKdotool: Sys.commandExists("kdotool")
     property string prevWinId: ""
@@ -21,14 +31,13 @@ Window {
 
     property string listPath: Sys.cacheListPath()
 
-    // Queue: emojis are appended on Enter, pasted on Esc
+    // Queue: emojis appended on Enter, pasted on Esc
     property string queued: ""
 
     ListModel { id: allModel }
     ListModel { id: viewModel }
 
     function shellQuote(s) {
-        // single-quote safe for sh -lc
         return "'" + ("" + s).split("'").join("'\\''") + "'"
     }
 
@@ -38,7 +47,7 @@ Window {
 
         var txt = Sys.readAllText(listPath)
         if (!txt || txt.length === 0) {
-            statusText.text = "Cache missing/empty:\n" + listPath + "\n\nBuild it first (your cache script)."
+            statusText.text = "Cache missing/empty:\n" + listPath + "\n\nBuild it first."
             return
         }
 
@@ -78,17 +87,12 @@ Window {
     function queueEmoji(emoji) {
         if (!emoji || ("" + emoji).length === 0) return
         queued = queued + emoji
-        queueText.text = queued
     }
 
     function popEmoji() {
         if (!queued || queued.length === 0) return
-
-        // NOTE: This removes one UTF-16 code unit; good enough for many emoji,
-        // but ZWJ sequences are multi-codepoint and this will truncate them.
-        // If you want "remove last emoji cluster" properly, we can do that too.
+        // still naive; good enough for now
         queued = queued.slice(0, queued.length - 1)
-        queueText.text = queued
     }
 
     function pasteQueueAndQuit() {
@@ -119,6 +123,7 @@ Window {
         search.forceActiveFocus()
     }
 
+    // Key handling must be on an Item, not Window
     Item {
         anchors.fill: parent
         focus: true
@@ -157,38 +162,52 @@ Window {
             }
         }
 
-        Column {
+        ColumnLayout {
             anchors.fill: parent
             anchors.margins: 12
             spacing: 10
 
             Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: hField
                 radius: 12
-                height: 44
-                width: parent.width
                 color: "#1c1c1c"
                 border.color: "#2a2a2a"
 
-                TextField {
-                    id: search
-                    anchors.fill: parent
-                    anchors.margins: 10
-                    placeholderText: "Search emoji / :shortcode: / keywords…"
-                    background: null
-                    color: "white"
-                    font.pixelSize: 16
-                    onTextChanged: rebuildViewModel()
-                }
+		TextField {
+		    id: search
+		    // Layout.fillWidth: true
+		    width: parent.width
+		    Layout.preferredHeight: hField
+
+		    placeholderText: "Search emoji / :shortcode: / tags…"
+		    font.pixelSize: pxMd
+		    color: "white"
+
+		    leftPadding: 14
+		    rightPadding: 14
+		    topPadding: 10
+		    bottomPadding: 10
+
+		    background: Rectangle {
+			radius: 12
+			color: "#1c1c1c"
+			border.color: "#2a2a2a"
+		    }
+
+		    palette.placeholderText: "#777777"
+		    onTextChanged: rebuildViewModel()
+		}
             }
 
             Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: hField
                 radius: 10
-                height: 44
-                width: parent.width
                 color: "#151515"
                 border.color: "#2a2a2a"
 
-                Row {
+                RowLayout {
                     anchors.fill: parent
                     anchors.margins: 10
                     spacing: 10
@@ -196,76 +215,93 @@ Window {
                     Text {
                         text: "Queue:"
                         color: "#888888"
-                        font.pixelSize: 14
+                        font.pixelSize: pxSm
                     }
 
                     Text {
-                        id: queueText
                         text: queued
                         color: "white"
-                        font.pixelSize: 20
+                        font.pixelSize: pxLg
                         elide: Text.ElideRight
-                        width: parent.width - 70
+                        Layout.fillWidth: true
+                        verticalAlignment: Text.AlignVCenter
                     }
                 }
             }
 
             Text {
                 id: statusText
+                Layout.fillWidth: true
                 text: ""
                 color: "#bbbbbb"
                 wrapMode: Text.WordWrap
                 visible: text.length > 0
+                font.pixelSize: pxSm
             }
 
             ListView {
                 id: list
-                width: parent.width
-                height: parent.height - 140
+                Layout.fillWidth: true
+                Layout.fillHeight: true   // <-- THIS prevents overlap
                 clip: true
                 model: viewModel
                 currentIndex: 0
 
-                delegate: Rectangle {
-                    width: list.width
-                    height: 42
-                    radius: 8
-                    color: (index === list.currentIndex) ? "#2a2a2a" : "transparent"
+		delegate: Rectangle {
+		    width: list.width
+		    height: hRow
+		    radius: 8
+		    color: (index === list.currentIndex) ? "#2a2a2a" : "transparent"
 
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: list.currentIndex = index
-                        onDoubleClicked: queueEmoji(model.emoji)
-                    }
+		    // Build one clean label: ":rofl: lol laughing"
+		    property string label: {
+			var parts = ("" + model.line).split(/\s+/)
+			if (parts.length < 2) return ""
+			var sc = parts[1]              // :rofl:
+			var tags = []
+			// take up to 2 tags after shortcode
+			for (var i = 2; i < parts.length && tags.length < 2; i++) {
+			    tags.push(parts[i])
+			}
+			return tags.length ? (sc + "  " + tags.join(" ")) : sc
+		    }
 
-                    Row {
-                        anchors.fill: parent
-                        anchors.margins: 10
-                        spacing: 10
+		    MouseArea {
+			anchors.fill: parent
+			onClicked: list.currentIndex = index
+			onDoubleClicked: queueEmoji(model.emoji)
+		    }
 
-                        Text {
-                            text: model.emoji
-                            font.pixelSize: 22
-                            color: "white"
-                            width: 32
-                        }
+		    RowLayout {
+			anchors.fill: parent
+			anchors.margins: 10
+			spacing: 10
 
-                        Text {
-                            text: ("" + model.line).slice(("" + model.emoji).length + 1)
-                            font.pixelSize: 14
-                            elide: Text.ElideRight
-                            color: "#dddddd"
-                            verticalAlignment: Text.AlignVCenter
-                            width: list.width - 60
-                        }
-                    }
-                }
+			Text {
+			    text: model.emoji
+			    font.pixelSize: pxLg
+			    color: "white"
+			    Layout.preferredWidth: Math.round(pxLg * 2.0)
+			    verticalAlignment: Text.AlignVCenter
+			}
+
+			Text {
+			    text: label
+			    font.pixelSize: pxMd
+			    color: "white"
+			    elide: Text.ElideRight
+			    Layout.fillWidth: true
+			    verticalAlignment: Text.AlignVCenter
+			}
+		    }
+		}
             }
 
             Text {
+                Layout.fillWidth: true
                 text: "Enter = add to queue   Backspace = remove last   Esc = paste & close"
                 color: "#888888"
-                font.pixelSize: 12
+                font.pixelSize: pxSm
             }
         }
     }
