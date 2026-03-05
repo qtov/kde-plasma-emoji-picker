@@ -1,7 +1,21 @@
-# REASONING
-The KDE Plasma emoji applet is in "development" for 5 years as of now, and it still can't properly insert a god damned emoji, requiring at least 5 keystrokes extra with a awfully bad workflow.
+## REASONING
+The KDE Plasma emoji applet is in "development" for 5 years as of now, and it still can't properly insert a god damned emoji, requiring at least 5 keystrokes extra with an awfully bad workflow.
+- Shortcut to open emoji panel
+- write emoji
+- press enter to copy
+- press esc (clears text input)
+- press esc again
+- press ctrl+v
+Absolutely freakin' bollocks.
 
-I vibecoded this crap in 3 hours +/-. I have no experience with C++, but I thought it's going to be a fun one-time use stuff. It's actually decent, lmao.
+Hence... I vibecoded this crap in 3 hours +/- as I have no experience with C++ (except at university 10y ago).
+I'm happy with it, it's decent, it's fast, and the workflow is exactly how I want it.
+This slop's workflow is:
+- Shortcut to open emoji panel
+- write emoji
+- press enter to insert
+- press esc to exit + insert
+And that's not all, you can press `enter` multiple times to have 🤣🤣🤣, or even COMBINE them in the same prompt, the feat of engineering here, oh my god.
 
 # Emoji Picker (Qt / KDE Wayland)
 
@@ -10,6 +24,13 @@ A fast **native emoji picker for KDE Wayland**, inspired by the Windows `Win + .
 The picker opens quickly, lets you search emojis by shortcode or tags, queue multiple emojis, and paste them into the previously focused application.
 
 The goal of this project is **simplicity, speed, and a keyboard-first workflow**.
+
+---
+
+## Screenshots
+Emoji picker           |  Mutliple Emoji queueing
+:-------------------------:|:-------------------------:
+<img width="553" height="659" alt="image" src="https://github.com/user-attachments/assets/3b7796e3-7757-41c6-a7a0-08a6e067cfb9" /> |  <img width="541" height="668" alt="image" src="https://github.com/user-attachments/assets/259e7682-36ba-406c-b1cb-3e49634d93dc" />
 
 ---
 
