@@ -41,6 +41,13 @@ Window {
         return "'" + ("" + s).split("'").join("'\\''") + "'"
     }
 
+    function showAndFocus() {
+		root.visible = true
+	    root.raise()
+	    root.requestActivate()
+	    search.forceActiveFocus()
+	}
+
     function loadList() {
         allModel.clear()
         viewModel.clear()
