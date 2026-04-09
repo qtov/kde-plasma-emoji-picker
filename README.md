@@ -14,7 +14,7 @@ I'm happy with it, it's decent, it's fast, and the workflow is exactly how I wan
 This slop's workflow is:
 - Shortcut to open emoji panel
 - write emoji
-- press enter to insert
+- press enter to select emoji and add to queue
 - press esc to exit + insert
 
 And that's not all, you can press `enter` multiple times to have 🤣🤣🤣, or even COMBINE them in the same prompt, the feat of engineering here, oh my god.
