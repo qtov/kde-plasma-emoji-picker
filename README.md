@@ -19,6 +19,9 @@ This slop's workflow is:
 
 And that's not all, you can press `enter` multiple times to have 🤣🤣🤣, or even COMBINE them in the same prompt, the feat of engineering here, oh my god.
 
+<img width="600" height="660" alt="image" src="https://github.com/user-attachments/assets/78d7b110-7887-4f8c-844d-62ccf365425b" />
+
+
 # Emoji Picker (Qt / KDE Wayland)
 
 A fast **native emoji picker for KDE Wayland**, inspired by the Windows `Win + .` emoji panel.
