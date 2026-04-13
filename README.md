@@ -21,6 +21,8 @@ And that's not all, you can press `enter` multiple times to have 🤣🤣🤣, o
 
 <img width="600" height="660" alt="image" src="https://github.com/user-attachments/assets/78d7b110-7887-4f8c-844d-62ccf365425b" />
 
+source: https://www.reddit.com/r/ProgrammerHumor/comments/1sk0a4w/importantwork/
+
 
 # Emoji Picker (Qt / KDE Wayland)
 
