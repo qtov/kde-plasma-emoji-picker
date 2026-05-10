@@ -139,7 +139,7 @@ The binary will be installed to:
 Create a global shortcut that runs:
 
 ```bash
-emoji-picker --toggle
+emoji-picker
 ```
 
 Example:
@@ -148,14 +148,14 @@ Example:
 Meta + .
 ```
 
-Due to needing `--toggle` you also need to create the app as such.
+To make a desktop app to assign to shortcut, you can do the following:
 
 Location: `~/.local/share/applications/emoji-picker.desktop`
 ```
 [Desktop Entry]
 Type=Application
 Name=Emoji Picker
-Exec=emoji-picker --toggle
+Exec=emoji-picker
 Icon=face-smile
 Terminal=false
 Categories=Utility;
